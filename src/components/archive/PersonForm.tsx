@@ -16,6 +16,119 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
+const MONTHS = [
+  "Январь","Февраль","Март","Апрель","Май","Июнь",
+  "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь",
+];
+
+/** Разбирает строку "YYYY", "YYYY-MM" или "YYYY-MM-DD" на части */
+function parseDateParts(val: string) {
+  const parts = val ? val.split("-") : [];
+  return {
+    year: parts[0] || "",
+    month: parts[1] || "",
+    day: parts[2] || "",
+  };
+}
+
+/** Собирает части обратно в строку, только до последнего заполненного поля */
+function buildDateStr(year: string, month: string, day: string): string {
+  if (!year) return "";
+  if (!month) return year;
+  if (!day) return `${year}-${month}`;
+  return `${year}-${month}-${day}`;
+}
+
+/** Возвращает количество дней в месяце (с учётом года) */
+function daysInMonth(year: string, month: string): number {
+  const y = parseInt(year) || 2000;
+  const m = parseInt(month);
+  if (!m) return 31;
+  return new Date(y, m, 0).getDate();
+}
+
+interface DatePickerProps {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+}
+
+function FlexDatePicker({ value, onChange, placeholder }: DatePickerProps) {
+  const { year, month, day } = parseDateParts(value);
+
+  const inputStyle: React.CSSProperties = {
+    borderColor: "hsl(var(--aged-border))",
+    color: "hsl(var(--ink))",
+    background: "hsl(var(--parchment))",
+  };
+
+  function handleYear(v: string) {
+    const y = v.replace(/\D/g, "").slice(0, 4);
+    onChange(buildDateStr(y, month, day));
+  }
+
+  function handleMonth(v: string) {
+    const newDay = day && parseInt(day) > daysInMonth(year, v) ? "" : day;
+    onChange(buildDateStr(year, v, newDay));
+  }
+
+  function handleDay(v: string) {
+    onChange(buildDateStr(year, month, v));
+  }
+
+  const maxDay = daysInMonth(year, month);
+  const dayOptions = Array.from({ length: maxDay }, (_, i) => i + 1);
+
+  return (
+    <div className="flex gap-1.5">
+      {/* День */}
+      <select
+        className="px-2 py-2 text-sm font-ibm border outline-none flex-1"
+        style={inputStyle}
+        value={day}
+        onChange={(e) => handleDay(e.target.value)}
+        disabled={!month}
+        title={!month ? "Сначала выберите месяц" : ""}
+      >
+        <option value="">День</option>
+        {dayOptions.map((d) => (
+          <option key={d} value={String(d).padStart(2, "0")}>
+            {d}
+          </option>
+        ))}
+      </select>
+
+      {/* Месяц */}
+      <select
+        className="px-2 py-2 text-sm font-ibm border outline-none flex-[2]"
+        style={inputStyle}
+        value={month}
+        onChange={(e) => handleMonth(e.target.value)}
+        disabled={!year}
+        title={!year ? "Сначала введите год" : ""}
+      >
+        <option value="">Месяц</option>
+        {MONTHS.map((name, i) => {
+          const val = String(i + 1).padStart(2, "0");
+          return <option key={val} value={val}>{name}</option>;
+        })}
+      </select>
+
+      {/* Год */}
+      <input
+        type="text"
+        inputMode="numeric"
+        className="px-2 py-2 text-sm font-ibm border outline-none w-16"
+        style={inputStyle}
+        value={year}
+        onChange={(e) => handleYear(e.target.value)}
+        placeholder={placeholder || "Год"}
+        maxLength={4}
+      />
+    </div>
+  );
+}
+
 export function PersonForm({
   initial,
   onSave,
@@ -80,7 +193,7 @@ export function PersonForm({
         <div className="flex-1 space-y-3">
           <FormField label="ФИО *">
             <input
-              className="w-full px-3 py-2 text-sm font-ibm border outline-none focus:border-ink transition-colors"
+              className="w-full px-3 py-2 text-sm font-ibm border outline-none transition-colors"
               style={inputStyle}
               value={form.fullName}
               onChange={(e) => set("fullName", e.target.value)}
@@ -104,24 +217,30 @@ export function PersonForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Дата рождения">
-          <input
-            type="date"
-            className="w-full px-3 py-2 text-sm font-ibm border outline-none"
-            style={inputStyle}
+          <FlexDatePicker
             value={form.birthDate}
-            onChange={(e) => set("birthDate", e.target.value)}
+            onChange={(v) => set("birthDate", v)}
+            placeholder="Год"
           />
         </FormField>
-        <FormField label="Место рождения">
-          <input
-            className="w-full px-3 py-2 text-sm font-ibm border outline-none"
-            style={inputStyle}
-            value={form.birthPlace}
-            onChange={(e) => set("birthPlace", e.target.value)}
-            placeholder="Город, регион"
+        <FormField label="Дата смерти">
+          <FlexDatePicker
+            value={form.deathDate}
+            onChange={(v) => set("deathDate", v)}
+            placeholder="Год"
           />
         </FormField>
       </div>
+
+      <FormField label="Место рождения">
+        <input
+          className="w-full px-3 py-2 text-sm font-ibm border outline-none"
+          style={inputStyle}
+          value={form.birthPlace}
+          onChange={(e) => set("birthPlace", e.target.value)}
+          placeholder="Город, регион"
+        />
+      </FormField>
 
       <FormField label="Награды (каждая с новой строки)">
         <textarea

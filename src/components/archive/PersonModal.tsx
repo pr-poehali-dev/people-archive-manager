@@ -105,8 +105,12 @@ export function PersonModal({
             <div className="space-y-4">
               <InfoRow label="ФИО" value={person.fullName} />
               <InfoRow label="Дата рождения" value={person.birthDate ? formatDate(person.birthDate) : "—"} />
+              <InfoRow label="Дата смерти" value={person.deathDate ? formatDate(person.deathDate) : "—"} />
               {person.birthDate && (
-                <InfoRow label="Возраст" value={`${getAge(person.birthDate)} лет`} />
+                <InfoRow
+                  label={person.deathDate ? "Прожил лет" : "Возраст"}
+                  value={`${getAge(person.birthDate, person.deathDate)} лет`}
+                />
               )}
               <InfoRow label="Место рождения" value={person.birthPlace || "—"} />
               <InfoRow label="Статус" value={STATUS_LABELS[person.status]} />

@@ -426,6 +426,7 @@ function StatsPage({ people }: { people: Person[] }) {
 export default function App() {
   const [page, setPage] = useState("home");
   const [people, setPeople] = useState<Person[]>(INITIAL_DATA);
+  const [nextId, setNextId] = useState(INITIAL_DATA.length + 1);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const authorName = "Пользователь";
@@ -440,7 +441,7 @@ export default function App() {
     const now = new Date().toISOString().split("T")[0];
     const newPerson: Person = {
       ...data,
-      id: String(Date.now()),
+      id: String(nextId),
       createdAt: now,
       history: [
         {
@@ -452,6 +453,7 @@ export default function App() {
       ],
     };
     setPeople((p) => [newPerson, ...p]);
+    setNextId((n) => n + 1);
     setPage("home");
   }
 
@@ -466,6 +468,7 @@ export default function App() {
         `Статус: ${STATUS_LABELS[editingPerson.status]} → ${STATUS_LABELS[data.status as Status]}`
       );
     if (data.birthDate !== editingPerson.birthDate) changes.push("Дата рождения изменена");
+    if (data.deathDate !== editingPerson.deathDate) changes.push("Дата смерти изменена");
     if (data.birthPlace !== editingPerson.birthPlace) changes.push("Место рождения изменено");
     if (data.awards !== editingPerson.awards) changes.push("Сведения о наградах обновлены");
     if (data.biography !== editingPerson.biography) changes.push("Биография обновлена");
