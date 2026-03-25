@@ -3,15 +3,12 @@ import Icon from "@/components/ui/icon";
 import {
   type Person,
   type FormData,
-  type Status,
-  STATUS_LABELS,
-  INITIAL_DATA,
-  EMPTY_FORM,
   formatDate,
 } from "@/components/archive/types";
 import { PersonCard } from "@/components/archive/PersonCard";
 import { PersonModal } from "@/components/archive/PersonModal";
 import { PersonForm } from "@/components/archive/PersonForm";
+import { usePersonsApi } from "@/components/archive/usePersonsApi";
 
 // --- App Header ---
 function AppHeader({ page, onNav, total }: { page: string; onNav: (p: string) => void; total: number }) {
@@ -164,12 +161,13 @@ function HomePage({ people, onView, onAdd }: {
 }
 
 // --- Add / Edit Page ---
-function FormPage({ title, subtitle, initial, onSave, onCancel }: {
+function FormPage({ title, subtitle, initial, onSave, onCancel, saving }: {
   title: string;
   subtitle: string;
   initial?: Partial<Person>;
   onSave: (data: FormData) => void;
   onCancel: () => void;
+  saving?: boolean;
 }) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -193,7 +191,7 @@ function FormPage({ title, subtitle, initial, onSave, onCancel }: {
         >
           Форма № А-{new Date().getFullYear()}-{String(Date.now()).slice(-4)}
         </div>
-        <PersonForm initial={initial} onSave={onSave} onCancel={onCancel} />
+        <PersonForm initial={initial} onSave={onSave} onCancel={onCancel} saving={saving} />
       </div>
     </div>
   );
@@ -425,10 +423,10 @@ function StatsPage({ people }: { people: Person[] }) {
 // --- Main App ---
 export default function App() {
   const [page, setPage] = useState("home");
-  const [people, setPeople] = useState<Person[]>(INITIAL_DATA);
-  const [nextId, setNextId] = useState(INITIAL_DATA.length + 1);
+  const { people, loading, error, addPerson, editPerson, deletePerson } = usePersonsApi();
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [saving, setSaving] = useState(false);
   const authorName = "Пользователь";
 
   function navTo(p: string) {
@@ -437,64 +435,26 @@ export default function App() {
     setPage(p);
   }
 
-  function handleAdd(data: FormData) {
-    const now = new Date().toISOString().split("T")[0];
-    const newPerson: Person = {
-      ...data,
-      id: String(nextId),
-      createdAt: now,
-      history: [
-        {
-          date: now,
-          author: authorName,
-          action: "Создание записи",
-          changes: "Первичная запись внесена в архив",
-        },
-      ],
-    };
-    setPeople((p) => [newPerson, ...p]);
-    setNextId((n) => n + 1);
-    setPage("home");
+  async function handleAdd(data: FormData) {
+    setSaving(true);
+    const result = await addPerson(data, authorName);
+    setSaving(false);
+    if (result) setPage("home");
   }
 
-  function handleEdit(data: FormData) {
+  async function handleEdit(data: FormData) {
     if (!editingPerson) return;
-    const now = new Date().toISOString().split("T")[0];
-    const changes: string[] = [];
-    if (data.fullName !== editingPerson.fullName)
-      changes.push(`ФИО: «${editingPerson.fullName}» → «${data.fullName}»`);
-    if (data.status !== editingPerson.status)
-      changes.push(
-        `Статус: ${STATUS_LABELS[editingPerson.status]} → ${STATUS_LABELS[data.status as Status]}`
-      );
-    if (data.birthDate !== editingPerson.birthDate) changes.push("Дата рождения изменена");
-    if (data.deathDate !== editingPerson.deathDate) changes.push("Дата смерти изменена");
-    if (data.birthPlace !== editingPerson.birthPlace) changes.push("Место рождения изменено");
-    if (data.awards !== editingPerson.awards) changes.push("Сведения о наградах обновлены");
-    if (data.biography !== editingPerson.biography) changes.push("Биография обновлена");
-    if (data.photo !== editingPerson.photo) changes.push("Фотография обновлена");
-
-    const histEntry = {
-      date: now,
-      author: authorName,
-      action: "Редактирование",
-      changes: changes.length ? changes.join("; ") : "Незначительные правки",
-    };
-
-    const updated: Person = {
-      ...editingPerson,
-      ...data,
-      status: data.status as Status,
-      history: [...editingPerson.history, histEntry],
-    };
-
-    setPeople((p) => p.map((x) => (x.id === updated.id ? updated : x)));
-    setEditingPerson(null);
-    setSelectedPerson(updated);
+    setSaving(true);
+    const updated = await editPerson(editingPerson, data, authorName);
+    setSaving(false);
+    if (updated) {
+      setEditingPerson(null);
+      setSelectedPerson(updated);
+    }
   }
 
-  function handleDelete(id: string) {
-    setPeople((p) => p.filter((x) => x.id !== id));
+  async function handleDelete(id: string) {
+    await deletePerson(id);
     setSelectedPerson(null);
   }
 
@@ -504,14 +464,33 @@ export default function App() {
     <div className="min-h-screen" style={{ background: "hsl(var(--background))" }}>
       <AppHeader page={currentPage} onNav={navTo} total={people.length} />
 
+      {error && (
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="border px-4 py-2 text-sm font-ibm flex items-center gap-2"
+            style={{ borderColor: "hsl(var(--destructive))", color: "hsl(var(--destructive))", background: "hsl(var(--destructive) / 0.06)" }}>
+            <Icon name="AlertCircle" size={14} />
+            {error}
+          </div>
+        </div>
+      )}
+
       <main>
-        {editingPerson ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <div className="w-8 h-8 border-2 rounded-full animate-spin"
+              style={{ borderColor: "hsl(var(--aged-border))", borderTopColor: "hsl(var(--ink))" }} />
+            <p className="font-cormorant text-lg" style={{ color: "hsl(var(--ink-light))" }}>
+              Загрузка архива...
+            </p>
+          </div>
+        ) : editingPerson ? (
           <FormPage
             title="Редактировать запись"
             subtitle="Правка дела"
             initial={editingPerson}
             onSave={handleEdit}
             onCancel={() => setEditingPerson(null)}
+            saving={saving}
           />
         ) : page === "home" ? (
           <HomePage people={people} onView={setSelectedPerson} onAdd={() => setPage("add")} />
@@ -521,6 +500,7 @@ export default function App() {
             subtitle="Новое дело"
             onSave={handleAdd}
             onCancel={() => setPage("home")}
+            saving={saving}
           />
         ) : page === "search" ? (
           <SearchPage people={people} onView={setSelectedPerson} />

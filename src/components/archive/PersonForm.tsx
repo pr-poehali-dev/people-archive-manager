@@ -133,10 +133,12 @@ export function PersonForm({
   initial,
   onSave,
   onCancel,
+  saving,
 }: {
   initial?: Partial<Person>;
   onSave: (data: FormData) => void;
   onCancel: () => void;
+  saving?: boolean;
 }) {
   const [form, setForm] = useState<FormData>({ ...EMPTY_FORM, ...initial });
   const [photoPreview, setPhotoPreview] = useState(initial?.photo || "");
@@ -267,12 +269,12 @@ export function PersonForm({
       <div className="flex gap-3 pt-1">
         <button
           onClick={() => onSave(form)}
-          disabled={!form.fullName.trim()}
+          disabled={!form.fullName.trim() || saving}
           className="flex-1 py-2.5 text-sm font-ibm font-medium flex items-center justify-center gap-2 transition-opacity disabled:opacity-40"
           style={{ background: "hsl(var(--ink))", color: "hsl(var(--primary-foreground))" }}
         >
-          <Icon name="Save" size={14} />
-          Сохранить запись
+          <Icon name={saving ? "Loader" : "Save"} size={14} />
+          {saving ? "Сохранение..." : "Сохранить запись"}
         </button>
         <button
           onClick={onCancel}
