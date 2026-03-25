@@ -17,6 +17,7 @@ interface Person {
   birthDate: string;
   birthPlace: string;
   awards: string;
+  biography: string;
   status: Status;
   photo?: string;
   createdAt: string;
@@ -28,6 +29,7 @@ type FormData = {
   birthDate: string;
   birthPlace: string;
   awards: string;
+  biography: string;
   status: Status;
   photo: string;
 };
@@ -40,6 +42,7 @@ const INITIAL_DATA: Person[] = [
     birthDate: "1920-03-15",
     birthPlace: "г. Тула, Россия",
     awards: "Орден Красной Звезды\nМедаль «За отвагу»",
+    biography: "Участник Великой Отечественной войны. Призван в июне 1941 года. Служил в составе 154-й стрелковой дивизии. Проявил героизм в боях под Москвой в декабре 1941 года.",
     status: "killed",
     createdAt: "1945-05-09",
     history: [
@@ -52,6 +55,7 @@ const INITIAL_DATA: Person[] = [
     birthDate: "1918-07-22",
     birthPlace: "г. Воронеж, Россия",
     awards: "Медаль «За трудовую доблесть»",
+    biography: "Работала медицинской сестрой в военном госпитале № 3 с 1941 по 1945 год. После войны вернулась в Воронеж, преподавала в медицинском училище.",
     status: "alive",
     createdAt: "1945-06-01",
     history: [
@@ -65,6 +69,7 @@ const INITIAL_DATA: Person[] = [
     birthDate: "1922-11-08",
     birthPlace: "г. Смоленск, Россия",
     awards: "",
+    biography: "",
     status: "missing",
     createdAt: "1945-07-10",
     history: [
@@ -246,6 +251,18 @@ function PersonModal({ person, onClose, onEdit, onDelete }: {
                   <p className="font-ibm text-sm italic" style={{ color: "hsl(var(--muted-foreground))" }}>Нет сведений</p>
                 )}
               </div>
+              <div>
+                <p className="text-xs font-ibm uppercase tracking-widest mb-1.5" style={{ color: "hsl(var(--ink-light))" }}>
+                  Биография
+                </p>
+                {person.biography ? (
+                  <p className="font-ibm text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "hsl(var(--ink))" }}>
+                    {person.biography}
+                  </p>
+                ) : (
+                  <p className="font-ibm text-sm italic" style={{ color: "hsl(var(--muted-foreground))" }}>Биография не указана</p>
+                )}
+              </div>
               <InfoRow label="Дата внесения в архив" value={person.createdAt ? formatDate(person.createdAt) : "—"} />
             </div>
           )}
@@ -327,6 +344,7 @@ const EMPTY_FORM: FormData = {
   birthDate: "",
   birthPlace: "",
   awards: "",
+  biography: "",
   status: "alive",
   photo: "",
 };
@@ -431,6 +449,17 @@ function PersonForm({ initial, onSave, onCancel }: {
           value={form.awards}
           onChange={(e) => set("awards", e.target.value)}
           placeholder={"Орден Красной Звезды\nМедаль За отвагу"}
+        />
+      </FormField>
+
+      <FormField label="Биография">
+        <textarea
+          className="w-full px-3 py-2 text-sm font-ibm border outline-none resize-y"
+          style={{ ...inputStyle, minHeight: "120px" }}
+          rows={5}
+          value={form.biography}
+          onChange={(e) => set("biography", e.target.value)}
+          placeholder="Краткое жизнеописание, сведения о службе, деятельности, событиях жизни..."
         />
       </FormField>
 
@@ -817,6 +846,7 @@ export default function App() {
     if (data.birthDate !== editingPerson.birthDate) changes.push("Дата рождения изменена");
     if (data.birthPlace !== editingPerson.birthPlace) changes.push("Место рождения изменено");
     if (data.awards !== editingPerson.awards) changes.push("Сведения о наградах обновлены");
+    if (data.biography !== editingPerson.biography) changes.push("Биография обновлена");
     if (data.photo !== editingPerson.photo) changes.push("Фотография обновлена");
 
     const histEntry: HistoryEntry = {
